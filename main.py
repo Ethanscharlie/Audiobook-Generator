@@ -1,15 +1,16 @@
 import enum
 import time
+import subprocess
 from statistics import mean
 import os
 import concurrent.futures
 import shutil
 from pathlib import Path
-from openai import OpenAI
 
-OPENAI_SPEACH_MODEL = "onyx"
-CHARACTER_LIMIT = 4000
+CHARACTER_LIMIT = 10_000
 OUTPUT_DIR = "Output"
+MODEL_FILE = "piper/en_US-norman-medium.onnx"
+MODEL_CONFIG_FILE = "piper/en_en_US_norman_medium_en_US-norman-medium.onnx.json"
 
 start_time = time.time()
 
@@ -41,48 +42,30 @@ for c in text_from_file:
 
     chunks[-1] += c
 
+print(f"Made {len(chunks)} chunks")
 print("Preparing to generate audio")
 
-# Put through gpt
-client = OpenAI()
-
-audio_responces = {}
+# Put through piper
 count_finished = 0
 responce_times: list[float] = []
-with concurrent.futures.ThreadPoolExecutor() as executor:
-    for i, chunk in enumerate(chunks):
+for i, chunk in enumerate(chunks):
+    responce_time_start = time.time()
 
-        def get_responce(i: int, chunk: str):
-            responce_time_start = time.time()
+    subprocess.run(
+        f"piper-tts --model {MODEL_FILE} --config {MODEL_CONFIG_FILE} --output_file {OUTPUT_DIR}/SPEECH-{i}.wav",
+        input=chunk,
+        text=True,
+        shell=True,
+    )
 
-            response = client.audio.speech.create(
-                model="tts-1-hd", voice=OPENAI_SPEACH_MODEL, input=chunk
-            )
-            audio_responces[i] = response
+    responce_time_end = time.time()
+    time_taken = responce_time_end - responce_time_start
+    responce_times.append(time_taken)
 
-            responce_time_end = time.time()
-            time_taken = responce_time_end - responce_time_start
-            global response_times
-            responce_times.append(time_taken)
-
-            global count_finished
-            count_finished += 1
-            print(f"Chunk finished, took {time_taken:.2f} seconds")
-            print(f"{int(count_finished / len(chunks) * 100)}% Generated")
-
-        executor.submit(get_responce, i, chunk)
-
-print("Generation finished, preparing to write to disk")
-
-print("Sorting audio responces")
-sorted_audio_responces = [value for _, value in sorted(audio_responces.items())]
-
-# Write to file
-for i, response in enumerate(sorted_audio_responces):
-    speech_file_path = Path(__file__).parent / OUTPUT_DIR / f"speech - {i}.mp3"
-    print(f"Writing {speech_file_path}")
-    response.stream_to_file(speech_file_path)
-
+    count_finished += 1
+    print(f"Chunk finished, took {time_taken:.2f} seconds")
+    print(f"{int(count_finished / len(chunks) * 100)}% Generated ({count_finished} / {len(chunks)})")
+    print(f"ETA: {(len(chunks) - count_finished) * mean(responce_times) / 60:.2f} minutes")
 
 time_taken = time.time() - start_time
 print(
