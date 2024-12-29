@@ -52,7 +52,7 @@ for i, chunk in enumerate(chunks):
     responce_time_start = time.time()
 
     subprocess.run(
-        f"piper-tts --model {MODEL_FILE} --config {MODEL_CONFIG_FILE} --output_file {OUTPUT_DIR}/SPEECH-{i}.wav",
+        f"piper-tts --model {MODEL_FILE} --config {MODEL_CONFIG_FILE} -q --output_file {OUTPUT_DIR}/SPEECH-{i}.wav",
         input=chunk,
         text=True,
         shell=True,
