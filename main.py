@@ -7,7 +7,6 @@ import shutil
 from pathlib import Path
 from openai import OpenAI
 
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 OPENAI_SPEACH_MODEL = "onyx"
 CHARACTER_LIMIT = 4000
 OUTPUT_DIR = "Output"
